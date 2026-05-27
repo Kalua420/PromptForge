@@ -39,43 +39,24 @@ const TIER_CONFIGS = {
     badgeBorder: 'border-[rgba(255,77,28,0.2)]',
     dataAttr: 'pro',
   },
-  premium: {
-    name: 'Premium',
-    primary: '#A855F7',
-    ember: '#C084FC',
+  team: {
+    name: 'Team',
+    primary: '#00C896',
+    ember: '#34D9A0',
     accent: '#FFB800',
-    bg: '#080510',
-    paper: 'rgba(168,85,247,0.03)',
-    border: 'rgba(168,85,247,0.18)',
+    bg: '#050F0B',
+    paper: 'rgba(0,200,150,0.03)',
+    border: 'rgba(0,200,150,0.18)',
     text: '#F5F2ED',
-    textMuted: '#C4B5D0',
-    gradient: 'linear-gradient(135deg, #A855F7, #FFB800)',
-    glow: '0 4px 24px rgba(168,85,247,0.2)',
+    textMuted: '#B0D4C5',
+    gradient: 'linear-gradient(135deg, #00C896, #34D9A0)',
+    glow: '0 4px 24px rgba(0,200,150,0.2)',
     particles: true,
     noise: true,
     headingFont: '"Syne",sans-serif',
-    badgeClass: 'text-[#A855F7] bg-[rgba(168,85,247,0.1)]',
-    badgeBorder: 'border-[rgba(168,85,247,0.2)]',
-    dataAttr: 'premium',
-  },
-  enterprise: {
-    name: 'Enterprise',
-    primary: '#A855F7',
-    ember: '#C084FC',
-    accent: '#FFB800',
-    bg: '#05080F',
-    paper: 'rgba(168,85,247,0.025)',
-    border: 'rgba(168,85,247,0.18)',
-    text: '#F5F2ED',
-    textMuted: '#C4B5D0',
-    gradient: 'linear-gradient(135deg, #A855F7, #FFB800)',
-    glow: '0 4px 24px rgba(168,85,247,0.2)',
-    particles: true,
-    noise: true,
-    headingFont: '"Syne",sans-serif',
-    badgeClass: 'text-[#A855F7] bg-[rgba(168,85,247,0.1)]',
-    badgeBorder: 'border-[rgba(168,85,247,0.2)]',
-    dataAttr: 'enterprise',
+    badgeClass: 'text-[#00C896] bg-[rgba(0,200,150,0.1)]',
+    badgeBorder: 'border-[rgba(0,200,150,0.2)]',
+    dataAttr: 'team',
   },
 };
 
@@ -83,7 +64,14 @@ export function useTier() {
   const user = useAuthStore((s) => s.user);
   const plan = user?.plan || 'free';
   const tier = useMemo(() => TIER_CONFIGS[plan] || TIER_CONFIGS.free, [plan]);
-  return { plan, tier, isFree: plan === 'free', isPro: plan === 'pro', isPremium: plan === 'premium', isEnterprise: plan === 'enterprise', isPaid: plan !== 'free' };
+  return {
+    plan,
+    tier,
+    isFree: plan === 'free',
+    isPro: plan === 'pro',
+    isTeam: plan === 'team',
+    isPaid: plan !== 'free',
+  };
 }
 
 export { TIER_CONFIGS };

@@ -1,23 +1,9 @@
 import React from 'react';
 import { Lock, ArrowRight } from 'lucide-react';
-import { useSubscriptionStore, useTierInfo } from '../stores/subscriptionStore';
+import { useSubscriptionStore } from '../stores/subscriptionStore';
 
-/**
- * TierGate Component
- * Controls visibility and access based on subscription tier
- *
- * Usage:
- * <TierGate requiredTier="pro" fallback={<UpgradePrompt />}>
- *   <PremiumFeature />
- * </TierGate>
- *
- * Props:
- * - requiredTier: string - Minimum tier required (free, pro, premium, enterprise)
- * - feature: string - Feature flag to check (alternative to requiredTier)
- * - fallback: React.ReactNode - Component to show if not authorized
- * - showLock: boolean - Show lock icon overlay
- * - children: React.ReactNode - Content to show if authorized
- */
+const TIER_RANKS = { free: 0, pro: 1, team: 2 };
+
 export function TierGate({
   requiredTier = null,
   feature = null,
@@ -27,15 +13,12 @@ export function TierGate({
   children,
 }) {
   const { currentTier, hasFeature } = useSubscriptionStore();
-  const tierRanks = { free: 0, pro: 1, premium: 2, enterprise: 3 };
 
-  // Determine if user has access
   let hasAccess = false;
-
   if (feature) {
     hasAccess = hasFeature(feature);
   } else if (requiredTier) {
-    hasAccess = tierRanks[currentTier] >= tierRanks[requiredTier];
+    hasAccess = TIER_RANKS[currentTier] >= TIER_RANKS[requiredTier];
   } else {
     hasAccess = true;
   }
@@ -68,13 +51,9 @@ export function TierGate({
   return hasAccess ? children : null;
 }
 
-/**
- * UpgradePrompt Component
- * Default fallback UI for locked features
- */
 export function UpgradePrompt({
   title = 'Upgrade to unlock',
-  description = 'This feature is only available in Premium plans',
+  description = 'This feature is only available in paid plans',
   cta = 'View Plans',
   onUpgrade,
   tier = 'pro',
@@ -88,7 +67,6 @@ export function UpgradePrompt({
         </div>
         <Lock size={20} className="mt-1 text-accent/50 flex-shrink-0" />
       </div>
-
       {onUpgrade && (
         <button
           onClick={onUpgrade}
@@ -102,16 +80,11 @@ export function UpgradePrompt({
   );
 }
 
-/**
- * FeatureBadge Component
- * Shows tier availability badge for features
- */
 export function FeatureBadge({ tier = 'pro', label = null, size = 'sm' }) {
   const tierColors = {
     free: 'bg-primary/20 text-primary',
     pro: 'bg-orange-500/20 text-orange-400',
-    premium: 'bg-purple-500/20 text-purple-400',
-    enterprise: 'bg-emerald-500/20 text-emerald-400',
+    team: 'bg-emerald-500/20 text-emerald-400',
   };
 
   const sizeClasses = {
@@ -129,10 +102,6 @@ export function FeatureBadge({ tier = 'pro', label = null, size = 'sm' }) {
   );
 }
 
-/**
- * LimitWarning Component
- * Shows warning when user is approaching tier limits
- */
 export function LimitWarning({ used, limit, label }) {
   if (!limit || !used) return null;
 
@@ -165,27 +134,18 @@ export function LimitWarning({ used, limit, label }) {
   );
 }
 
-/**
- * TierComparison Component
- * Inline feature comparison for two tiers
- */
 export function TierComparison({ tier1 = 'free', tier2 = 'pro', features }) {
   const tierConfigs = {
     free: { name: 'Free', color: '#4f6ef7' },
     pro: { name: 'Pro', color: '#FF4D1C' },
-    premium: { name: 'Premium', color: '#A855F7' },
-    enterprise: { name: 'Enterprise', color: '#00C896' },
+    team: { name: 'Team', color: '#00C896' },
   };
 
-  const { hasFeature: hasFeatureStore } = useSubscriptionStore();
-
-  // Simplified feature check
   const hasFeatureInTier = (tier, feature) => {
     const tierFeatures = {
       free: ['basic'],
       pro: ['basic', 'providers', 'exports'],
-      premium: ['basic', 'providers', 'exports', 'team'],
-      enterprise: ['basic', 'providers', 'exports', 'team', 'dedicated'],
+      team: ['basic', 'providers', 'exports', 'team', 'api'],
     };
     return tierFeatures[tier]?.includes(feature);
   };
@@ -206,7 +166,6 @@ export function TierComparison({ tier1 = 'free', tier2 = 'pro', features }) {
         >
           {tierConfigs[tier2].name}
         </div>
-
         {features?.map((feature) => (
           <React.Fragment key={feature}>
             <div className="text-xs text-text/70">{feature}</div>

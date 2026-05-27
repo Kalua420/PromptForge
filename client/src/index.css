@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Base (Free tier default) ─── */
 :root {
   --color-bg: #080a0f;
   --color-paper: #0e1218;
@@ -14,7 +13,6 @@
   --font-heading: "Inter", sans-serif;
 }
 
-/* ─── Pro tier ─── */
 [data-tier="pro"] {
   --color-bg: #0A0A0F;
   --color-paper: rgba(255, 255, 255, 0.025);
@@ -26,24 +24,11 @@
   --font-heading: "Syne", sans-serif;
 }
 
-/* ─── Premium tier ─── */
-[data-tier="premium"] {
-  --color-bg: #080510;
-  --color-paper: rgba(168, 85, 247, 0.03);
-  --color-primary: #A855F7;
-  --color-accent: #FFB800;
-  --color-border: rgba(168, 85, 247, 0.18);
-  --color-text: #F5F2ED;
-  --color-text-muted: #C4B5D0;
-  --font-heading: "Syne", sans-serif;
-}
-
-/* ─── Enterprise tier ─── */
-[data-tier="enterprise"] {
-  --color-bg: #05080F;
-  --color-paper: rgba(0, 200, 150, 0.025);
+[data-tier="team"] {
+  --color-bg: #050F0B;
+  --color-paper: rgba(0, 200, 150, 0.03);
   --color-primary: #00C896;
-  --color-accent: #FFB800;
+  --color-accent: #34D9A0;
   --color-border: rgba(0, 200, 150, 0.18);
   --color-text: #F5F2ED;
   --color-text-muted: #B0D4C5;
@@ -59,7 +44,7 @@
   }
 
   ::selection {
-    background: var(--color-primary, #4f6ef7) at 30% opacity;
+    background: color-mix(in srgb, var(--color-primary, #4f6ef7) 30%, transparent);
     color: #e8eaf2;
   }
 
@@ -91,6 +76,16 @@
   select:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #4f6ef7) 25%, transparent);
+  }
+
+  select {
+    background-color: var(--color-paper, #0e1218);
+    color: var(--color-text, #e8eaf2);
+  }
+
+  select option {
+    background-color: var(--color-paper, #0e1218);
+    color: var(--color-text, #e8eaf2);
   }
 
   button:focus-visible {
@@ -138,6 +133,50 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.5s ease-out forwards;
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-shake {
+    animation: shake 0.4s ease-in-out;
+  }
+
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-8px);
+    }
+    75% {
+      transform: translateX(8px);
     }
   }
 }

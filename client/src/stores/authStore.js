@@ -9,6 +9,7 @@ export const useAuthStore = create(
       refreshToken: null,
       login: (user, accessToken, refreshToken) => set({ user: { ...user, plan: user.plan || 'free' }, accessToken, refreshToken }),
       setPlan: (plan) => set((s) => ({ user: s.user ? { ...s.user, plan } : null })),
+      setUser: (user) => set((s) => ({ user: s.user ? { ...s.user, ...user } : user })),
       logout: () => set({ user: null, accessToken: null, refreshToken: null }),
     }),
     { name: 'auth-storage' },

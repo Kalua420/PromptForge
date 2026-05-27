@@ -8,17 +8,24 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  name          String
-  email         String         @unique
-  passwordHash  String
-  avatar        String?
-  createdAt     DateTime       @default(now())
+  id           String            @id @default(cuid())
+  name         String
+  email        String            @unique
+  passwordHash String
+  avatar       String?           @db.Text
+  role         String            @default("user")
+  termsAcceptedAt DateTime?
+  privacyAcceptedAt DateTime?
+  resetToken   String?           @unique
+  resetTokenExpiry DateTime?
+  emailVerified Boolean          @default(false)
+  verificationToken String?      @unique
+  createdAt    DateTime          @default(now())
   conversations Conversation[]
-  prompts       Prompt[]
-  favorites     Favorite[]
-  subscription  Subscription?
-  payments      Payment[]
+  prompts      Prompt[]
+  favorites    Favorite[]
+  payments     Payment[]
+  creditBalance CreditBalance?
 }
 
 model Conversation {
@@ -51,20 +58,29 @@ model Generation {
   id        String   @id @default(cuid())
   content   String   @db.Text
   tokensUsed Int?
+  provider  String?
+  apiKeyId  String?  // Track which API key was used
   promptId  String
   prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  
+  @@index([apiKeyId, createdAt])
+  @@index([provider, createdAt])
 }
 
 model Template {
-  id          String   @id @default(cuid())
-  title       String   @db.Text
-  description String   @db.Text
-  category    String
-  content     String   @db.Text
-  plan        String   @default("free")
-  featured    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id              String   @id @default(cuid())
+  title           String   @db.Text
+  description     String   @db.Text
+  category        String
+  content         String   @db.Text
+  plan            String   @default("free")
+  featured        Boolean  @default(false)
+  minCreditsRequired Int   @default(0)  // Minimum credits user must have to access
+  recommendedFor  String?  // Recommended credit pack: starter, standard, premium, enterprise
+  providers       String?  // Comma-separated list of recommended providers
+  useCase         String?  // Associated use case: coding, writing, chatbot, research, image, video
+  createdAt       DateTime @default(now())
 }
 
 model Favorite {
@@ -76,30 +92,107 @@ model Favorite {
   @@unique([userId, promptId])
 }
 
-model Subscription {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan           String    // free, pro, enterprise
-  status         String    // active, canceled, expired
-  razorpayPlanId String?
-  subscriptionId String?   @unique
-  currentPeriodEnd DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+model Payment {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount            Int
+  currency          String      @default("INR")
+  status            String      // pending, completed, failed, refunded
+  razorpayOrderId   String      @unique
+  razorpayPaymentId String?     @unique
+  signature         String?
+  creditPackId      String?
+  creditPack        CreditPack? @relation(fields: [creditPackId], references: [id])
+  creditsGranted    Int?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  @@index([userId, createdAt])
+  @@index([status])
 }
 
-model Payment {
-  id              String    @id @default(cuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount          Int
-  currency        String    @default("INR")
-  plan            String
-  status          String    // pending, completed, failed, refunded
-  razorpayOrderId String    @unique
-  razorpayPaymentId String? @unique
-  signature       String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+model CreditBalance {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credits   Int      @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model CreditTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // purchase, usage, refund, bonus, expiry
+  amount      Int      // positive for additions, negative for deductions
+  balance     Int      // balance after this transaction
+  description String   @db.Text
+  metadata    String?  @db.Text // JSON: {"promptId": "...", "provider": "...", "packId": "..."}
+  createdAt   DateTime @default(now())
+  
+  @@index([userId, createdAt])
+}
+
+model CreditPack {
+  id            String    @id @default(cuid())
+  name          String
+  credits       Int
+  bonusCredits  Int       @default(0)
+  priceInPaise  Int       // e.g. 9900 for ₹99
+  isActive      Boolean   @default(true)
+  displayOrder  Int       @default(0)
+  popular       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  payments      Payment[]
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  provider    String   // groq, sambanova, anthropic, opencode, gemini
+  apiKey      String   @db.Text
+  label       String?  // Optional label for identification (e.g., "Production Key 1")
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0) // Higher priority keys are tried first
+  lastUsedAt  DateTime?
+  failCount   Int      @default(0) // Track consecutive failures
+  lastFailAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  failureLogs ApiKeyFailureLog[]
+  
+  @@index([provider, isActive, priority])
+  @@index([provider, failCount])
+}
+
+model ApiKeyFailureLog {
+  id         String   @id @default(cuid())
+  apiKeyId   String
+  apiKey     ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  provider   String   // denormalized for fast queries
+  errorCode  String?  // HTTP status code or error type (e.g. "401", "ECONNREFUSED")
+  errorMsg   String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+  @@index([provider, createdAt])
+}
+
+model ApiKeyUsageLog {
+  id           String   @id @default(cuid())
+  apiKeyId     String   // API key that was used
+  provider     String   // denormalized for fast queries
+  userId       String   // User who made the request
+  promptId     String?  // Associated prompt (if applicable)
+  generationId String?  // Associated generation (if applicable)
+  useCase      String?  // coding, writing, chatbot, etc.
+  tokensUsed   Int?     // Tokens consumed in this request
+  success      Boolean  @default(true) // Whether the request succeeded
+  errorMsg     String?  @db.Text // Error message if failed
+  createdAt    DateTime @default(now())
+  
+  @@index([apiKeyId, createdAt])
+  @@index([provider, createdAt])
+  @@index([userId, createdAt])
+  @@index([success, createdAt])
 }

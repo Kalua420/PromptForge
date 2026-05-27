@@ -1,11 +1,12 @@
 {
-  "name": "promptforge-server",
+  "name": "nexprompt-server",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "seed": "node prisma/seed.js",
+    "reset:data": "node scripts/reset-data.js",
     "build": "echo 'no build step'"
   },
   "prisma": {
@@ -13,6 +14,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
+    "@sendgrid/mail": "^8.1.6",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -20,6 +22,7 @@
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^8.0.8",
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.1"
   },

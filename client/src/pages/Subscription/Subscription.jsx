@@ -1,179 +1,90 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Sparkles, Crown, TrendingUp } from 'lucide-react';
-import Button from '../../components/Button';
-import Card from '../../components/Card';
+import { motion } from 'framer-motion';
 import Sidebar from '../../components/Sidebar';
-import { PricingTable } from '../../components/PricingTable';
-import { TierGate, UpgradePrompt, FeatureBadge } from '../../components/TierGate';
+import CreditPackCard from '../../components/CreditPackCard';
 import { useAuthStore } from '../../stores/authStore';
 import { useUiStore } from '../../stores/uiStore';
-import { useSubscriptionStore } from '../../stores/subscriptionStore';
+import useCreditStore from '../../stores/creditStore';
 import { useResponsive } from '../../hooks/useResponsive';
+import api from '../../utils/api';
 
-const TIERS = {
-  free: {
-    id: 'free',
-    name: 'Free',
-    displayName: 'Starter',
-    price: 0,
-    currency: 'INR',
-    billing: 'Forever free',
-    color: '#4f6ef7',
-    badge: null,
-    description: 'Perfect for getting started',
-    features: { prompts: 50, providers: 1, templates: 'Basic', conversations: 5, exports: false, teamWorkspace: false, customStrategies: false, priority: false, dedicated: false },
-    features_list: ['50 prompts/month', '1 AI provider', 'Basic templates', '5 conversations', 'Community support'],
-  },
-  pro: {
-    id: 'pro',
-    name: 'Pro',
-    displayName: 'Professional',
-    price: 1900,
-    currency: 'INR',
-    billing: '30 days',
-    color: '#FF4D1C',
-    badge: 'Popular',
-    description: 'For serious prompt engineers',
-    features: { prompts: 'unlimited', providers: 5, templates: 'Advanced', conversations: 'unlimited', exports: true, teamWorkspace: false, customStrategies: false, priority: true, dedicated: false },
-    features_list: ['Unlimited prompts', 'All 5 AI providers', 'Advanced templates', 'Unlimited conversations', 'Export prompts (JSON, MD)', 'API access', 'Email support (24h)', 'Usage analytics'],
-  },
-  premium: {
-    id: 'premium',
-    name: 'Premium',
-    displayName: 'Enterprise',
-    price: 3900,
-    currency: 'INR',
-    billing: '30 days',
-    color: '#A855F7',
-    badge: 'Best for Teams',
-    description: 'For teams with advanced needs',
-    features: { prompts: 'unlimited', providers: 5, templates: 'Advanced', conversations: 'unlimited', exports: true, teamWorkspace: true, customStrategies: true, priority: true, dedicated: false },
-    features_list: ['Everything in Pro', 'Team workspace (5 seats)', 'Custom strategies', 'Team collaboration', 'Audit logs', 'Priority support (2h)', 'Webhook integrations', 'Advanced analytics'],
-  },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    displayName: 'Enterprise',
-    price: 4900,
-    currency: 'INR',
-    billing: '30 days',
-    color: '#00C896',
-    badge: 'For Scale',
-    description: 'Custom solutions for enterprises',
-    features: { prompts: 'unlimited', providers: 5, templates: 'Advanced', conversations: 'unlimited', exports: true, teamWorkspace: true, customStrategies: true, priority: true, dedicated: true },
-    features_list: ['Everything in Premium', 'Unlimited team seats', 'Dedicated account manager', 'Custom integrations', 'On-premise deployment', 'SLA guarantee (99.9%)', '24/7 phone support', 'Custom training'],
-  },
-};
+const CREDIT_COST_TABLE = [
+  { provider: 'Groq', cost: 1 },
+  { provider: 'OpenCode', cost: 1 },
+  { provider: 'Gemini', cost: 2 },
+  { provider: 'SambaNova', cost: 2 },
+  { provider: 'Anthropic', cost: 3 },
+];
+
+const TABS = [
+  { id: 'buy', label: 'Buy Credits', icon: '💳' },
+  { id: 'history', label: 'Purchase History', icon: '📋' },
+];
 
 export default function SubscriptionPage() {
   const navigate = useNavigate();
-  const { accessToken, user, setPlan } = useAuthStore();
+  const { user } = useAuthStore();
   const { sidebarOpen } = useUiStore();
   const { isMobile } = useResponsive();
-
-  const { currentTier, subscription, error, loadSubscription, getDaysRemaining, isNearRenewal, setCurrentTier } = useSubscriptionStore();
-
-  const [paymentError, setPaymentError] = useState('');
-  const [paymentSuccess, setPaymentSuccess] = useState('');
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [showComparison, setShowComparison] = useState(true);
+  const { packs, loadPacks } = useCreditStore();
+  
+  const [activeTab, setActiveTab] = useState('buy');
+  const [purchaseHistory, setPurchaseHistory] = useState([]);
+  const [purchaseStats, setPurchaseStats] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
-    loadSubscription(accessToken, import.meta.env.VITE_API_URL || 'http://localhost:5000');
-  }, [user, navigate, accessToken]);
+    loadPacks();
+  }, []);
 
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) { resolve(true); return; }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
+  useEffect(() => {
+    if (activeTab === 'history' && user) {
+      fetchPurchaseHistory();
+      fetchPurchaseStats();
+    }
+  }, [activeTab, user]);
+
+  const fetchPurchaseHistory = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/api/payments/history');
+      setPurchaseHistory(response.data.payments || []);
+    } catch (err) {
+      console.error('Failed to fetch purchase history:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPurchaseStats = async () => {
+    try {
+      const response = await api.get('/api/payments/stats');
+      setPurchaseStats(response.data);
+    } catch (err) {
+      console.error('Failed to fetch purchase stats:', err);
+    }
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
-  const handleSubscribe = async (plan) => {
-    if (plan === 'free') { navigate('/dashboard'); return; }
-    setPaymentLoading(true); setPaymentError(''); setPaymentSuccess('');
-
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/create-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ plan }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) { setPaymentError(data.error || 'Failed to create order'); setPaymentLoading(false); return; }
-
-      const loaded = await loadRazorpayScript();
-      if (!loaded) { setPaymentError('Failed to load payment gateway'); setPaymentLoading(false); return; }
-
-      const options = {
-        key: data.key,
-        amount: data.amount,
-        currency: data.currency,
-        order_id: data.orderId,
-        name: 'PromptForge',
-        description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan Subscription`,
-        handler: async (response) => {
-          try {
-            const verifyRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/verify`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-              body: JSON.stringify({
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-                paymentId: data.paymentId,
-              }),
-            });
-            const verifyData = await verifyRes.json();
-            if (verifyRes.ok) {
-              setPaymentSuccess('Payment successful! Subscription activated.');
-              setPlan(plan);
-              setCurrentTier(plan);
-              setTimeout(() => loadSubscription(accessToken, import.meta.env.VITE_API_URL || 'http://localhost:5000'), 1000);
-            } else {
-              setPaymentError(verifyData.error || 'Payment verification failed');
-            }
-          } catch { setPaymentError('Payment verification failed'); }
-          finally { setPaymentLoading(false); }
-        },
-        prefill: { name: user?.name || '', email: user?.email || '' },
-        theme: { color: TIERS[plan]?.color || '#4f6ef7' },
-        modal: { ondismiss: () => setPaymentLoading(false) },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch { setPaymentError('Failed to initiate payment'); }
-    setPaymentLoading(false);
+  const getStatusBadge = (status) => {
+    const statusStyles = {
+      completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+      failed: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    };
+    return statusStyles[status] || statusStyles.pending;
   };
-
-  const handleCancel = async () => {
-    setPaymentLoading(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/cancel`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (res.ok) {
-        setPaymentSuccess('Subscription canceled');
-        setPlan('free');
-        setCurrentTier('free');
-        setTimeout(() => loadSubscription(accessToken, import.meta.env.VITE_API_URL || 'http://localhost:5000'), 1000);
-      } else { setPaymentError('Failed to cancel subscription'); }
-    } catch { setPaymentError('Failed to cancel subscription'); }
-    finally { setPaymentLoading(false); }
-  };
-
-  const daysRemaining = getDaysRemaining();
-  const nearExpiry = isNearRenewal();
 
   return (
     <div className="min-h-screen bg-bg">
@@ -182,117 +93,172 @@ export default function SubscriptionPage() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-5xl font-bold mb-3">
-              <span className="text-gradient">Plans & Pricing</span>
+              <span className="text-gradient">Subscription & Credits</span>
             </motion.h1>
-            <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-text/70 max-w-2xl mx-auto">
-              Choose the perfect plan for your needs. Upgrade or downgrade anytime with no hidden fees.
+            <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-text/70 max-w-2xl mx-auto mb-6">
+              Manage your credits and view your purchase history
             </motion.p>
           </div>
 
-          {(paymentError || error) && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
-              {paymentError || error}
-            </motion.div>
-          )}
-          {paymentSuccess && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm text-center">
-              {paymentSuccess}
-            </motion.div>
-          )}
+          {/* Tabs */}
+          <div className="flex gap-2 mb-8 border-b border-border">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-3 font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'text-accent border-b-2 border-accent'
+                    : 'text-text/60 hover:text-text'
+                }`}
+              >
+                <span className="mr-2">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-          {subscription && currentTier !== 'free' && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className={`mb-8 rounded-xl border p-6 ${nearExpiry ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-primary/30 bg-primary/5'}`}>
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
-                    <Crown size={20} className="text-accent" /> Current Subscription
-                  </h3>
-                  <div className="flex items-center gap-3 text-sm">
-                    <FeatureBadge tier={currentTier} />
-                    {daysRemaining && daysRemaining > 0 && (
-                      <span className={nearExpiry ? 'text-yellow-400' : 'text-text/70'}>
-                        {nearExpiry && '⚠️ '}
-                        {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {currentTier !== 'enterprise' && (
-                  <div className="flex gap-3">
-                    <Button variant="ghost" onClick={() => handleSubscribe('enterprise')} loading={paymentLoading}>
-                      <TrendingUp size={16} /> Upgrade
-                    </Button>
-                    <Button variant="danger" onClick={handleCancel} loading={paymentLoading}>
-                      <X size={16} /> Cancel
-                    </Button>
+          {/* Buy Credits Tab */}
+          {activeTab === 'buy' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              className="mb-12">
+              <p className="text-sm text-text/70 text-center mb-8 max-w-lg mx-auto">
+                Buy credits to generate prompts. Credits work across all AI providers and never expire.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {packs.length > 0 ? packs.map((pack) => (
+                  <CreditPackCard
+                    key={pack.id}
+                    pack={pack}
+                    onPurchaseSuccess={() => {
+                      loadPacks();
+                      fetchPurchaseHistory();
+                      fetchPurchaseStats();
+                    }}
+                  />
+                )) : (
+                  <div className="col-span-full text-center py-8 text-text/50">
+                    Loading credit packs...
                   </div>
                 )}
               </div>
-              {nearExpiry && (
-                <div className="mt-3 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                  <p className="text-xs text-yellow-400 font-medium">
-                    Your subscription expires soon. Renew now to maintain uninterrupted access.
-                  </p>
+
+              <div className="rounded-xl border border-border p-5 bg-paper/50">
+                <h4 className="text-sm font-semibold text-text mb-3">Credit Cost per Generation</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {CREDIT_COST_TABLE.map(({ provider, cost }) => (
+                    <div key={provider} className="p-3 rounded-lg bg-bg border border-border text-center">
+                      <div className="text-xs text-text/60 mb-1">{provider}</div>
+                      <div className="font-bold text-accent">{cost} credit{cost > 1 ? 's' : ''}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                className="rounded-xl border border-border p-6 bg-gradient-to-br from-primary/5 to-accent/5 mt-8">
+                <h3 className="text-lg font-bold text-white mb-6">Frequently Asked Questions</h3>
+                <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                  {[
+                    { q: 'How do credits work?', a: 'Each prompt generation consumes credits based on the AI provider. Groq and OpenCode cost 1 credit, Gemini and SambaNova cost 2, Anthropic costs 3.' },
+                    { q: 'Do credits expire?', a: 'No, purchased credits never expire. Use them anytime.' },
+                    { q: 'What payment methods are accepted?', a: 'Credit/debit cards, UPI, net banking, and wallets via Razorpay.' },
+                    { q: 'Can I get a refund?', a: '30-day money-back guarantee if you are not satisfied with your credit purchase.' },
+                  ].map((faq, i) => (
+                    <div key={i} className="border-l-2 border-accent/30 pl-4">
+                      <h4 className="font-semibold text-text mb-1 text-sm">{faq.q}</h4>
+                      <p className="text-xs text-text/70">{faq.a}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* Purchase History Tab */}
+          {activeTab === 'history' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              
+              {/* Stats Cards */}
+              {purchaseStats && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                  <div className="rounded-lg border border-border p-4 bg-paper/50">
+                    <div className="text-xs text-text/60 mb-1">Total Spent</div>
+                    <div className="text-2xl font-bold text-accent">₹{purchaseStats.totalSpent}</div>
+                  </div>
+                  <div className="rounded-lg border border-border p-4 bg-paper/50">
+                    <div className="text-xs text-text/60 mb-1">Total Purchases</div>
+                    <div className="text-2xl font-bold text-accent">{purchaseStats.totalPurchases}</div>
+                  </div>
+                  <div className="rounded-lg border border-border p-4 bg-paper/50">
+                    <div className="text-xs text-text/60 mb-1">Credits Purchased</div>
+                    <div className="text-2xl font-bold text-accent">{purchaseStats.totalCreditsSpent}</div>
+                  </div>
+                  <div className="rounded-lg border border-border p-4 bg-paper/50">
+                    <div className="text-xs text-text/60 mb-1">Current Balance</div>
+                    <div className="text-2xl font-bold text-accent">{purchaseStats.currentBalance}</div>
+                  </div>
                 </div>
               )}
+
+              {/* Purchase History Table */}
+              <div className="rounded-xl border border-border overflow-hidden bg-paper/50">
+                {loading ? (
+                  <div className="p-8 text-center text-text/50">
+                    Loading purchase history...
+                  </div>
+                ) : purchaseHistory.length === 0 ? (
+                  <div className="p-8 text-center text-text/50">
+                    No purchases yet. Start by buying your first credit pack!
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="border-b border-border bg-bg/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-text">Date</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-text">Pack</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-text">Credits</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-text">Amount</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-text">Price/Credit</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-text">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {purchaseHistory.map((purchase, idx) => (
+                          <tr key={purchase.id} className={idx % 2 === 0 ? 'bg-bg/20' : ''}>
+                            <td className="px-4 py-3 text-sm text-text">
+                              {formatDate(purchase.createdAt)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-text font-medium">
+                              {purchase.packName}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-accent font-semibold">
+                              {purchase.creditsGranted}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-text">
+                              ₹{(purchase.amount / 100).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-text/70">
+                              ₹{purchase.pricePerCredit}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadge(purchase.status)}`}>
+                                {purchase.status.charAt(0).toUpperCase() + purchase.status.slice(1)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-12">
-            <PricingTable tiers={TIERS} onSelect={handleSubscribe} currentTier={currentTier} />
-          </motion.div>
-
-          <div className="text-center mb-6">
-            <button onClick={() => setShowComparison(!showComparison)}
-              className="text-sm font-medium text-accent hover:text-primary transition-colors">
-              {showComparison ? '▼' : '▶'} {showComparison ? 'Hide' : 'Show'} Detailed Features
-            </button>
-          </div>
-
-          {showComparison && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-12">
-              <Card className="p-6">
-                <h3 className="text-xl font-bold text-white mb-4">Advanced Features</h3>
-                <TierGate requiredTier="pro">
-                  <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                    <h4 className="font-semibold text-primary mb-2">🔌 API Access</h4>
-                    <p className="text-sm text-text/70">RESTful API for programmatic access to all prompt features.</p>
-                  </div>
-                </TierGate>
-                <TierGate requiredTier="premium" fallback={<UpgradePrompt />}>
-                  <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                    <h4 className="font-semibold text-purple-400 mb-2">👥 Team Workspace</h4>
-                    <p className="text-sm text-text/70">Collaborate with your team in real-time.</p>
-                  </div>
-                </TierGate>
-                <TierGate requiredTier="enterprise" fallback={<UpgradePrompt tier="enterprise" />}>
-                  <div className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                    <h4 className="font-semibold text-emerald-400 mb-2">🚀 Enterprise Suite</h4>
-                    <p className="text-sm text-text/70">Dedicated account manager, SLA guarantees, custom integrations.</p>
-                  </div>
-                </TierGate>
-              </Card>
-            </motion.div>
-          )}
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="rounded-xl border border-border p-6 bg-gradient-to-br from-primary/5 to-accent/5">
-            <h3 className="text-lg font-bold text-white mb-6">Frequently Asked Questions</h3>
-            <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
-              {[
-                { q: 'Can I change plans anytime?', a: 'Yes, upgrade or downgrade instantly. Changes take effect immediately.' },
-                { q: 'Do you offer refunds?', a: '30-day money-back guarantee if you are not satisfied.' },
-                { q: 'Can I use multiple providers?', a: 'Free: 1 provider. Pro+: All 5 providers.' },
-                { q: 'Is there a free trial?', a: 'Yes! Start with our Free tier. No credit card required.' },
-              ].map((faq, i) => (
-                <div key={i} className="border-l-2 border-accent/30 pl-4">
-                  <h4 className="font-semibold text-text mb-1 text-sm">{faq.q}</h4>
-                  <p className="text-xs text-text/70">{faq.a}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
         </motion.div>
       </div>
     </div>

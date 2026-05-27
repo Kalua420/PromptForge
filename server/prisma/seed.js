@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import { CREDIT_PACKS } from '../config/tiers.js';
 
 const prisma = new PrismaClient();
 
@@ -22,6 +24,10 @@ Tone: Professional, patient, and helpful
 Knowledge cutoff: Use general SaaS knowledge`,
     plan: 'free',
     featured: true,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Groq', 'OpenCode'],
+    useCase: 'chatbot',
   },
   {
     title: 'FAQ Bot',
@@ -36,6 +42,10 @@ Rules:
 - Offer to connect them with a human agent if needed`,
     plan: 'free',
     featured: false,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Groq', 'OpenCode'],
+    useCase: 'chatbot',
   },
   {
     title: 'Code Review Assistant',
@@ -59,6 +69,10 @@ Language: Detect and use the appropriate language
 Output: Organized by severity, then by category`,
     plan: 'free',
     featured: true,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Groq', 'OpenCode', 'SambaNova'],
+    useCase: 'coding',
   },
   {
     title: 'Debug Helper',
@@ -76,6 +90,10 @@ If the error message is missing, ask for it.
 Focus on practical, working solutions.`,
     plan: 'free',
     featured: false,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Groq', 'OpenCode', 'SambaNova'],
+    useCase: 'coding',
   },
   {
     title: 'Email Composer',
@@ -96,6 +114,10 @@ Include placeholders in [brackets] for personalization.
 If the user provides a draft, improve it rather than rewriting completely.`,
     plan: 'free',
     featured: false,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Groq', 'OpenCode'],
+    useCase: 'writing',
   },
   {
     title: 'Blog Post Outline Generator',
@@ -116,6 +138,10 @@ Target audience and topic will be provided by the user.
 Format the outline as a structured markdown document.`,
     plan: 'free',
     featured: true,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Groq', 'OpenCode', 'SambaNova'],
+    useCase: 'writing',
   },
   {
     title: 'Article Summarizer',
@@ -134,6 +160,10 @@ Tone: Objective and factual
 Preserve all important data, names, and dates`,
     plan: 'free',
     featured: false,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Groq', 'OpenCode'],
+    useCase: 'research',
   },
   {
     title: 'Fact Checker',
@@ -152,6 +182,10 @@ Flag opinions presented as facts.
 Suggest what evidence would confirm or refute the claim.`,
     plan: 'free',
     featured: false,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Groq', 'OpenCode'],
+    useCase: 'research',
   },
   {
     title: 'Product Photography Prompt',
@@ -170,6 +204,10 @@ Prompt structure:
 Format as a single cohesive paragraph suitable for image generation models like DALL-E or Midjourney.`,
     plan: 'free',
     featured: false,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Gemini', 'SambaNova'],
+    useCase: 'image',
   },
   {
     title: 'Logo Designer',
@@ -189,6 +227,10 @@ Generate 3 distinct concepts with different approaches.
 Format as structured markdown.`,
     plan: 'free',
     featured: false,
+    minCreditsRequired: 0,
+    recommendedFor: null,
+    providers: ['Gemini', 'SambaNova'],
+    useCase: 'image',
   },
 
   // ─── PRO ────────────────────────────────────────────────
@@ -213,6 +255,10 @@ Crisis protocol: If the user expresses suicidal ideation or self-harm, provide c
 Tone: Warm, non-judgmental, patient`,
     plan: 'pro',
     featured: true,
+    minCreditsRequired: 50,
+    recommendedFor: 'starter',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'chatbot',
   },
   {
     title: 'Interview Coach',
@@ -240,6 +286,10 @@ Track which areas need more practice.
 Offer a summary at the end with key improvement areas.`,
     plan: 'pro',
     featured: false,
+    minCreditsRequired: 50,
+    recommendedFor: 'starter',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'chatbot',
   },
   {
     title: 'Full-Stack App Generator',
@@ -261,6 +311,10 @@ Tech stack: Detect from user preference or default to (Node/Express + React + Po
 Output organized by implementation phase for incremental building.`,
     plan: 'pro',
     featured: true,
+    minCreditsRequired: 100,
+    recommendedFor: 'standard',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'coding',
   },
   {
     title: 'API Designer',
@@ -287,6 +341,10 @@ Also provide:
 Style: RESTful by default, mention GraphQL alternatives where relevant.`,
     plan: 'pro',
     featured: false,
+    minCreditsRequired: 100,
+    recommendedFor: 'standard',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'coding',
   },
   {
     title: 'SEO-Optimized Article',
@@ -310,6 +368,10 @@ Structure:
 Include keyword in first 100 words and at least 3 H2 tags.`,
     plan: 'pro',
     featured: true,
+    minCreditsRequired: 100,
+    recommendedFor: 'standard',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'writing',
   },
   {
     title: 'Grant Proposal Writer',
@@ -333,6 +395,10 @@ Include placeholders for specific data the user should fill in.
 Highlight key differentiators and innovation aspects.`,
     plan: 'pro',
     featured: false,
+    minCreditsRequired: 100,
+    recommendedFor: 'standard',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'writing',
   },
   {
     title: 'Academic Literature Review',
@@ -358,6 +424,10 @@ Output should be suitable for a graduate-level academic paper.
 Aim for 8-12 substantive references.`,
     plan: 'pro',
     featured: false,
+    minCreditsRequired: 100,
+    recommendedFor: 'standard',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'research',
   },
   {
     title: 'Market Analysis Report',
@@ -382,6 +452,10 @@ Present data with estimated percentages and relative comparisons.
 Use frameworks: Porter's Five Forces, PESTLE, or BCG Matrix as applicable.`,
     plan: 'pro',
     featured: true,
+    minCreditsRequired: 100,
+    recommendedFor: 'standard',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'research',
   },
   {
     title: 'UI/UX Mockup Generator',
@@ -403,6 +477,10 @@ Include a user flow description showing how this screen connects to others.
 Format for development handoff with precise measurements.`,
     plan: 'pro',
     featured: true,
+    minCreditsRequired: 100,
+    recommendedFor: 'standard',
+    providers: ['Gemini', 'SambaNova'],
+    useCase: 'image',
   },
   {
     title: 'Character Designer',
@@ -423,9 +501,13 @@ For each view provide a detailed image generation prompt.
 Include style references (art style, artist influences, medium).`,
     plan: 'pro',
     featured: false,
+    minCreditsRequired: 100,
+    recommendedFor: 'standard',
+    providers: ['Gemini', 'SambaNova'],
+    useCase: 'image',
   },
 
-  // ─── ENTERPRISE ─────────────────────────────────────────
+  // ─── TEAM ───────────────────────────────────────────────
   {
     title: 'Enterprise Knowledge Base Bot',
     description: 'An AI agent that maintains and queries enterprise knowledge bases with RAG capabilities.',
@@ -456,8 +538,12 @@ Governance:
 - Respect document access levels and permissions
 
 Tone: Professional, precise, efficient`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: true,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'chatbot',
   },
   {
     title: 'Multi-Agent Orchestrator',
@@ -489,8 +575,12 @@ For each orchestrated task provide:
 - Quality metrics
 
 Output as a structured project plan with milestones.`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: false,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'chatbot',
   },
   {
     title: 'Microservices Architecture Designer',
@@ -518,8 +608,12 @@ Deliverables:
 
 Include decision rationale for key architectural choices.
 Provide implementation roadmap with phases.`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: true,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'coding',
   },
   {
     title: 'Database Schema Optimizer',
@@ -544,8 +638,12 @@ For each optimization recommend:
 
 Support multiple databases: PostgreSQL, MySQL, SQL Server, MongoDB.
 Include ORM mapping recommendations if applicable (Prisma, TypeORM, Sequelize).`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: false,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'coding',
   },
   {
     title: 'Technical Documentation Suite',
@@ -578,8 +676,12 @@ Documentation suite:
 
 Style: Clear, concise, with code examples and diagrams.
 Cover: Error states, edge cases, and security considerations for each section.`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: true,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'writing',
   },
   {
     title: 'Business Strategy Report',
@@ -612,8 +714,12 @@ Report sections:
 
 Base recommendations on established frameworks (Porter's, Blue Ocean, Disruptive Innovation).
 Include clear owners and timelines for each action item.`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: false,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'writing',
   },
   {
     title: 'Competitive Intelligence Report',
@@ -648,8 +754,12 @@ Report structure:
 
 Data confidence ratings: Confirmed / Estimated / Inferred
 Flag intelligence gaps that need primary research.`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: true,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'research',
   },
   {
     title: 'Patent Search Assistant',
@@ -681,8 +791,12 @@ For each patent found:
 
 Format as a structured patent landscape report.
 Flag all assumptions and limitations of the analysis.`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: false,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['SambaNova', 'Anthropic'],
+    useCase: 'research',
   },
   {
     title: 'Architectural Visualization',
@@ -711,8 +825,12 @@ For each view provide:
    - Post-processing style
 
 Generate 4 key renders: exterior day, exterior night, interior main space, detail close-up.`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: true,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['Gemini', 'SambaNova'],
+    useCase: 'image',
   },
   {
     title: 'Brand Kit Generator',
@@ -752,28 +870,110 @@ Brand kit components:
    - Packaging (if applicable)
 
 For each visual component provide a detailed image generation prompt.`,
-    plan: 'enterprise',
+    plan: 'team',
     featured: false,
+    minCreditsRequired: 500,
+    recommendedFor: 'premium',
+    providers: ['Gemini', 'SambaNova'],
+    useCase: 'image',
   },
 ];
 
 async function main() {
-  console.log('Seeding templates...');
+  console.log('Seeding admin user...');
 
-  for (const tmpl of templates) {
-    await prisma.template.create({
+  const adminEmail = 'admin@nexprompt.site';
+  const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
+  if (!existing) {
+    const hash = await bcrypt.hash('Admin123!', 12);
+    await prisma.user.create({
       data: {
-        title: tmpl.title,
-        description: tmpl.description,
-        category: tmpl.category,
-        content: tmpl.content,
-        plan: tmpl.plan,
-        featured: tmpl.featured,
+        name: 'Admin',
+        email: adminEmail,
+        passwordHash: hash,
+        role: 'admin',
       },
     });
+    console.log(`Admin user created: ${adminEmail} / Admin123!`);
+  } else {
+    console.log('Admin user already exists');
   }
 
-  console.log(`Seeded ${templates.length} templates`);
+  console.log('Seeding test users...');
+
+  const testUsers = [
+    { name: 'Alice Johnson', email: 'alice@example.com', plan: 'free' },
+    { name: 'Bob Smith', email: 'bob@example.com', plan: 'pro' },
+    { name: 'Charlie Brown', email: 'charlie@example.com', plan: 'team' },
+    { name: 'Diana Prince', email: 'diana@example.com', plan: 'free' },
+    { name: 'Eve Miller', email: 'eve@example.com', plan: 'pro' },
+    { name: 'Frank Castle', email: 'frank@example.com', plan: 'free' },
+    { name: 'Grace Hopper', email: 'grace@example.com', plan: 'team' },
+    { name: 'Henry Cavill', email: 'henry@example.com', plan: 'free' },
+    { name: 'Ivy League', email: 'ivy@example.com', plan: 'pro' },
+    { name: 'Jack Sparrow', email: 'jack@example.com', plan: 'free' },
+  ];
+
+  for (const u of testUsers) {
+    const exists = await prisma.user.findUnique({ where: { email: u.email } });
+    if (!exists) {
+      const hash = await bcrypt.hash('Test1234!', 12);
+      await prisma.user.create({
+        data: { name: u.name, email: u.email, passwordHash: hash },
+      });
+      console.log(`  Created: ${u.email} / Test1234!`);
+    }
+  }
+
+  console.log('Seeding templates...');
+
+  const existingCount = await prisma.template.count();
+  if (existingCount === 0) {
+    for (const tmpl of templates) {
+      await prisma.template.create({
+        data: {
+          title: tmpl.title,
+          description: tmpl.description,
+          category: tmpl.category,
+          content: tmpl.content,
+          plan: tmpl.plan,
+          featured: tmpl.featured,
+          minCreditsRequired: tmpl.minCreditsRequired || 0,
+          recommendedFor: tmpl.recommendedFor || null,
+          providers: tmpl.providers ? tmpl.providers.join(', ') : null,
+          useCase: tmpl.useCase || null,
+        },
+      });
+    }
+    console.log(`Seeded ${templates.length} templates`);
+  } else {
+    console.log(`Skipped (${existingCount} templates already exist)`);
+  }
+
+  console.log('Seeding credit packs...');
+
+  const existingPacksCount = await prisma.creditPack.count();
+  if (existingPacksCount === 0) {
+    const packs = Object.values(CREDIT_PACKS);
+    let displayOrder = 0;
+    for (const pack of packs) {
+      await prisma.creditPack.create({
+        data: {
+          id: pack.id,
+          name: pack.name,
+          credits: pack.credits,
+          bonusCredits: pack.bonus,
+          priceInPaise: pack.price * 100, // Convert ₹ to paise
+          isActive: true,
+          displayOrder: displayOrder++,
+          popular: pack.popular,
+        },
+      });
+    }
+    console.log(`Seeded ${packs.length} credit packs`);
+  } else {
+    console.log(`Skipped (${existingPacksCount} credit packs already exist)`);
+  }
 }
 
 main()

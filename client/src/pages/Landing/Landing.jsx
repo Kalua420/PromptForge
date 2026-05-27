@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight, Sparkles, Zap, MessageSquare, Code, PenTool,
   Image, Search, Check, Star, Users, Cpu, Shield, ArrowUpRight,
-  ChevronDown, Play, X
+  ChevronDown, Play, X, Video
 } from 'lucide-react';
 
 /* ─── Design Tokens ──────────────────────────────────────────── */
@@ -26,6 +26,7 @@ const USE_CASES = [
   { id:'writing',  label:'Writing',  Icon:PenTool,       accent:'#A855F7' },
   { id:'research', label:'Research', Icon:Search,        accent:'#FFB800' },
   { id:'image',    label:'Image',    Icon:Image,         accent:'#FF4D1C' },
+  { id:'video',    label:'Video',    Icon:Video,         accent:'#EC4899' },
 ];
 
 const DEMO = {
@@ -96,18 +97,54 @@ STRUCTURE
 CITATION  APA 7 · Prioritise peer-reviewed + industry surveys (Stack Overflow, JetBrains)`,
 
   image: `Vast brutalist library interior at golden hour, towering concrete shelves receding to infinity, warm amber shafts of light cutting through industrial skylights, lone figure dwarfed by architecture, holographic card catalogues floating mid-air, dust motes suspended in beams, ultra-detailed photorealism, cinematic anamorphic lens, shallow depth of field, Kodak Vision3 film emulation, warm amber + cold steel colour contrast, 8K, award-winning architectural photography`,
+
+  video: `## Video Concept
+60-second explainer showing how AI prompt engineering transforms vague ideas into production-ready outputs — viewers must feel "I need this tool."
+
+## Format & Platform
+Short-form explainer · YouTube Shorts / TikTok / Instagram Reels · 9:16 vertical
+
+## Visual Style
+Screen recording with animated overlays · Clean UI focus · Fast-paced cuts (3–4s per scene) · Vibrant gradient accents (orange-to-purple) · Modern sans-serif text overlays
+
+## Target Audience
+Developers, content creators, marketers using AI daily — frustrated with inconsistent results, want professional-grade prompts without trial-and-error
+
+## Structure & Script Outline
+0–5s: Hook — "Your AI is only as good as your prompt" (bold text + visual of bad AI output)
+5–15s: Problem — Show messy prompt → poor result (side-by-side comparison)
+15–40s: Solution — Demo NexPrompt: paste idea → pick strategy → stream optimized prompt
+40–55s: Result — Show same input now producing perfect output
+55–60s: CTA — "Start free at nexprompt.site" (logo + URL overlay)
+
+## Tone & Presenter Style
+No presenter · Voiceover: confident, fast-paced, direct · Upbeat electronic background music
+
+## Key Messages
+1. Bad prompts = wasted time & money
+2. NexPrompt = instant professional prompts
+3. Works with all major AI providers
+
+## Visual & Audio Elements
+B-roll: typing animations, AI provider logos, before/after comparisons · Music: upbeat tech (120 BPM) · Text: bold sans-serif, high contrast
+
+## Call to Action
+"Try free — no card required" button overlay at 55s
+
+## Production Notes
+1080×1920 (9:16) · Captions required · Brand orange (#FF4D1C) for CTAs`,
 };
 
 const STEPS = [
   { n:'01', title:'Describe your goal', body:'Write what you want in plain language — no prompting expertise required.', Icon:MessageSquare },
   { n:'02', title:'Choose a strategy', body:'Five domain-tuned strategies for Chatbot, Coding, Writing, Research, and Image.', Icon:Zap },
-  { n:'03', title:'Pick your AI', body:'Groq, OpenAI, Anthropic, Gemini, or OpenCode — switch anytime, mid-session.', Icon:Cpu },
+  { n:'03', title:'Pick your AI', body:'Groq, SambaNova, Anthropic, Gemini, or OpenCode — switch anytime, mid-session.', Icon:Cpu },
   { n:'04', title:'Stream the result', body:'Watch a superior AI response appear in real time. Cancel, refine, repeat.', Icon:Sparkles },
 ];
 
 const PROVIDERS = [
   { name:'Groq',      model:'LLaMA 3.3 70B',        tag:'Fastest',   color:'#00C896' },
-  { name:'OpenAI',    model:'GPT-4o',                tag:'Smartest',  color:'#3B9EFF' },
+  { name:'SambaNova', model:'DeepSeek-V3.1',        tag:'Powerful',  color:'#3B9EFF' },
   { name:'Anthropic', model:'Claude 3.5 Sonnet',     tag:'Nuanced',   color:'#A855F7' },
   { name:'Gemini',    model:'Gemini 2.0 Flash',      tag:'Versatile', color:'#FFB800' },
   { name:'OpenCode',  model:'DeepSeek V4',            tag:'Code-first',color:'#FF4D1C' },
@@ -115,9 +152,8 @@ const PROVIDERS = [
 
 const PLANS = [
   { name:'Free',       price:'₹0',  mo:true,  features:['50 prompts / month','1 AI provider','10 free templates','Conversation history'], to:'/register' },
-  { name:'Pro',        price:'₹19', mo:true,  features:['Unlimited prompts','All 5 providers','All 24+ templates','Priority support','Prompt refinement'], to:'/subscription', hot:true },
-  { name:'Premium',    price:'₹39', mo:true,  features:['Everything in Pro','Team workspace','Custom strategies','Priority support','Webhook integrations'], to:'/subscription' },
-  { name:'Enterprise', price:'₹49', mo:true,  features:['Everything in Premium','Unlimited team seats','Dedicated manager','SLA guarantee','On-premise option'], to:'/subscription' },
+  { name:'Pro',        price:'₹19', mo:true,  features:['Unlimited prompts','All 5 providers','All 24+ templates','Email support','7-day trial'], to:'/subscription', hot:true },
+  { name:'Team',       price:'₹49', mo:true,  features:['Everything in Pro','Team workspace (3+ seats)','Custom strategies','API access','Dedicated manager','14-day trial'], to:'/subscription' },
 ];
 
 /* ─── Typewriter ─────────────────────────────────────────────── */
@@ -255,7 +291,7 @@ function LiveDemo() {
         <span style={{width:12,height:12,borderRadius:'50%',background:'#FF5F57'}}/>
         <span style={{width:12,height:12,borderRadius:'50%',background:'#FFBD2E'}}/>
         <span style={{width:12,height:12,borderRadius:'50%',background:'#28C840'}}/>
-        <span style={{marginLeft:8,fontSize:11,color:'rgba(255,255,255,0.25)',fontFamily:'monospace'}}>promptforge — workspace</span>
+        <span style={{marginLeft:8,fontSize:11,color:'rgba(255,255,255,0.25)',fontFamily:'monospace'}}>nexprompt — workspace</span>
         <span style={{marginLeft:'auto',fontSize:10,color:TOKEN.forge,opacity:0.7}}>● LIVE</span>
       </div>
 
@@ -452,7 +488,7 @@ export default function Landing() {
             background:`linear-gradient(90deg,${TOKEN.forge},${TOKEN.gold})`,
             WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',
           }}>
-          PromptForge
+          NexPrompt
         </span>
 
         <nav style={{display:'flex',alignItems:'center',gap:32}}>
@@ -889,21 +925,32 @@ export default function Landing() {
       <footer style={{
         borderTop:'1px solid rgba(255,255,255,0.06)',
         padding:'40px clamp(16px,6vw,80px)',
-        display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,
       }}>
-        <span style={{
-          fontSize:18,fontWeight:800,fontFamily:'"Syne",sans-serif',
-          background:`linear-gradient(90deg,${TOKEN.forge},${TOKEN.gold})`,
-          WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',
-        }}>PromptForge</span>
-        <p style={{fontSize:12,color:'rgba(255,255,255,0.25)'}}>© 2026 PromptForge. Craft perfect prompts with AI.</p>
-        <div style={{display:'flex',gap:24}}>
-          {[['Sign in','/login'],['Get started','/register'],['Templates','/templates']].map(([label,to])=>(
-            <Link key={to} to={to} style={{fontSize:12,color:'rgba(255,255,255,0.3)',textDecoration:'none',transition:'color 0.15s'}}
-              onMouseEnter={e=>e.target.style.color='rgba(255,255,255,0.7)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.3)'}>
-              {label}
-            </Link>
-          ))}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:24,marginBottom:24}}>
+          <span style={{
+            fontSize:18,fontWeight:800,fontFamily:'"Syne",sans-serif',
+            background:`linear-gradient(90deg,${TOKEN.forge},${TOKEN.gold})`,
+            WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',
+          }}>NexPrompt</span>
+          <div style={{display:'flex',gap:24,flexWrap:'wrap'}}>
+            {[['Sign in','/login'],['Get started','/register'],['Templates','/templates']].map(([label,to])=>(
+              <Link key={to} to={to} style={{fontSize:12,color:'rgba(255,255,255,0.3)',textDecoration:'none',transition:'color 0.15s'}}
+                onMouseEnter={e=>e.target.style.color='rgba(255,255,255,0.7)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.3)'}>
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,paddingTop:24,borderTop:'1px solid rgba(255,255,255,0.04)'}}>
+          <p style={{fontSize:12,color:'rgba(255,255,255,0.25)'}}>© 2026 NexPrompt. Craft perfect prompts with AI.</p>
+          <div style={{display:'flex',gap:20}}>
+            {[['Terms & Conditions','/terms'],['Privacy Policy','/privacy']].map(([label,to])=>(
+              <Link key={to} to={to} style={{fontSize:11,color:'rgba(255,255,255,0.25)',textDecoration:'none',transition:'color 0.15s'}}
+                onMouseEnter={e=>e.target.style.color='rgba(255,255,255,0.5)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.25)'}>
+                {label}
+              </Link>
+            ))}
+          </div>
         </div>
       </footer>
     </div>

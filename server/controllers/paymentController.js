@@ -1,128 +1,25 @@
 import { prisma } from '../src/index.js';
-import { createOrder, verifyPaymentSignature, verifyWebhookSignature, PLANS } from '../services/razorpayService.js';
-import { getTier } from '../config/tiers.js';
+import { verifyWebhookSignature } from '../services/razorpayService.js';
+import { CREDIT_PACKS } from '../config/tiers.js';
+import { sendPaymentSuccessEmail, sendPaymentFailureEmail } from '../services/emailService.js';
 
 export async function createPaymentOrder(req, res) {
-  try {
-    const { plan } = req.body;
-    const userId = req.user.userId;
-
-    const tierConfig = getTier(plan);
-    if (!tierConfig) {
-      return res.status(400).json({ error: 'Invalid plan' });
-    }
-
-    if (plan === 'free') {
-      return res.status(400).json({ error: 'Free plan does not require payment' });
-    }
-
-    const existingSubscription = await prisma.subscription.findUnique({ where: { userId } });
-    if (existingSubscription && existingSubscription.status === 'active') {
-      const isExpired = existingSubscription.currentPeriodEnd && new Date(existingSubscription.currentPeriodEnd) < new Date();
-      if (!isExpired) {
-        return res.status(400).json({ error: 'You already have an active subscription' });
-      }
-    }
-
-    const order = await createOrder({ userId, plan });
-
-    const payment = await prisma.payment.create({
-      data: {
-        userId,
-        amount: PLANS[plan].amount,
-        currency: PLANS[plan].currency,
-        plan,
-        status: 'pending',
-        razorpayOrderId: order.id,
-      },
-    });
-
-    res.json({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID,
-      paymentId: payment.id,
-    });
-  } catch (error) {
-    console.error('Error creating payment order:', error);
-    res.status(500).json({ error: 'Failed to create payment order' });
-  }
+  return res.status(400).json({ error: 'Plan subscriptions are no longer available. Purchase credits instead.' });
 }
 
 export async function verifyPayment(req, res) {
-  try {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } = req.body;
-
-    const isValid = verifyPaymentSignature({ razorpayOrderId, razorpayPaymentId, razorpaySignature });
-    if (!isValid) {
-      return res.status(400).json({ error: 'Invalid payment signature' });
-    }
-
-    const payment = await prisma.payment.findUnique({ where: { razorpayOrderId } });
-    if (!payment) {
-      return res.status(404).json({ error: 'Payment not found' });
-    }
-
-    // Verify user owns this payment
-    if (payment.userId !== req.user.userId) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    // Idempotency check - if already completed, return success
-    if (payment.status === 'completed') {
-      return res.json({ success: true, message: 'Payment already verified' });
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: 'completed',
-          razorpayPaymentId,
-          signature: razorpaySignature,
-        },
-      });
-
-      const planEndDates = {
-        pro: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        premium: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      };
-
-      await tx.subscription.upsert({
-        where: { userId: payment.userId },
-        create: {
-          userId: payment.userId,
-          plan: payment.plan,
-          status: 'active',
-          currentPeriodEnd: planEndDates[payment.plan],
-        },
-        update: {
-          plan: payment.plan,
-          status: 'active',
-          currentPeriodEnd: planEndDates[payment.plan],
-        },
-      });
-    });
-
-    res.json({ success: true, message: 'Payment verified and subscription activated' });
-  } catch (error) {
-    console.error('Error verifying payment:', error);
-    res.status(500).json({ error: 'Failed to verify payment' });
-  }
+  return res.status(400).json({ error: 'Plan subscriptions are no longer available. Purchase credits instead.' });
 }
 
 export async function handleWebhook(req, res) {
   try {
     const signature = req.headers['x-razorpay-signature'];
-    
     if (!signature) {
       console.error('Webhook signature missing');
       return res.status(400).json({ error: 'Signature required' });
     }
 
     const payload = JSON.stringify(req.body);
-
     const isValid = verifyWebhookSignature(payload, signature);
     if (!isValid) {
       console.error('Invalid webhook signature');
@@ -136,8 +33,9 @@ export async function handleWebhook(req, res) {
       case 'payment.captured': {
         const payment = await prisma.payment.findUnique({
           where: { razorpayOrderId: event.payload.payment.entity.order_id },
+          include: { user: true, creditPack: true },
         });
-
+        
         if (payment && payment.status === 'pending') {
           await prisma.payment.update({
             where: { id: payment.id },
@@ -147,6 +45,13 @@ export async function handleWebhook(req, res) {
             },
           });
           console.log(`Payment ${payment.id} marked as completed`);
+          
+          // Send success email (non-blocking)
+          if (payment.user && payment.creditPack) {
+            sendPaymentSuccessEmail(payment.user, payment, payment.creditPack).catch(err => 
+              console.error('Failed to send payment success email:', err.message)
+            );
+          }
         }
         break;
       }
@@ -154,33 +59,24 @@ export async function handleWebhook(req, res) {
       case 'payment.failed': {
         const payment = await prisma.payment.findUnique({
           where: { razorpayOrderId: event.payload.payment.entity.order_id },
+          include: { user: true },
         });
-
+        
         if (payment) {
           await prisma.payment.update({
             where: { id: payment.id },
             data: { status: 'failed' },
           });
           console.log(`Payment ${payment.id} marked as failed`);
+          
+          // Send failure email (non-blocking)
+          if (payment.user) {
+            const reason = event.payload.payment.entity.error_description || 'Payment processing failed';
+            sendPaymentFailureEmail(payment.user, payment, reason).catch(err => 
+              console.error('Failed to send payment failure email:', err.message)
+            );
+          }
         }
-        break;
-      }
-
-      case 'subscription.cancelled': {
-        await prisma.subscription.updateMany({
-          where: { subscriptionId: event.payload.subscription.entity.id },
-          data: { status: 'canceled' },
-        });
-        console.log(`Subscription ${event.payload.subscription.entity.id} cancelled`);
-        break;
-      }
-
-      case 'subscription.expired': {
-        await prisma.subscription.updateMany({
-          where: { subscriptionId: event.payload.subscription.entity.id },
-          data: { status: 'expired' },
-        });
-        console.log(`Subscription ${event.payload.subscription.entity.id} expired`);
         break;
       }
     }
@@ -193,52 +89,114 @@ export async function handleWebhook(req, res) {
 }
 
 export async function getSubscription(req, res) {
-  try {
-    const userId = req.user.userId;
-
-    const subscription = await prisma.subscription.findUnique({ where: { userId } });
-
-    if (!subscription) {
-      return res.json({ plan: 'free', status: 'none' });
-    }
-
-    const isExpired = subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) < new Date();
-    if (isExpired && subscription.status === 'active') {
-      await prisma.subscription.update({
-        where: { userId },
-        data: { status: 'expired' },
-      });
-      return res.json({ plan: subscription.plan, status: 'expired' });
-    }
-
-    res.json({
-      plan: subscription.plan,
-      status: subscription.status,
-      currentPeriodEnd: subscription.currentPeriodEnd,
-    });
-  } catch (error) {
-    console.error('Error fetching subscription:', error);
-    res.status(500).json({ error: 'Failed to fetch subscription' });
-  }
+  res.json({ planId: 'free', status: 'active' });
 }
 
 export async function cancelUserSubscription(req, res) {
+  return res.status(400).json({ error: 'No active subscription to cancel' });
+}
+
+/**
+ * GET /api/payments/history
+ * Get user's purchase history
+ */
+export async function getPurchaseHistory(req, res) {
+  try {
+    const userId = req.user.userId;
+    const { limit = 50, offset = 0 } = req.query;
+
+    // Get payments with credit pack details
+    const payments = await prisma.payment.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit),
+      skip: parseInt(offset),
+      include: {
+        creditPack: true,
+      },
+    });
+
+    // Get total count
+    const total = await prisma.payment.count({
+      where: { userId },
+    });
+
+    // Enrich payments with pack details
+    const enrichedPayments = payments.map(payment => {
+      const pack = CREDIT_PACKS[payment.creditPackId] || payment.creditPack;
+      const totalCredits = payment.creditsGranted || (pack ? pack.credits + pack.bonus : 0);
+
+      return {
+        id: payment.id,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: payment.status,
+        creditsGranted: totalCredits,
+        packName: pack?.name || 'Unknown Pack',
+        packId: payment.creditPackId,
+        razorpayOrderId: payment.razorpayOrderId,
+        razorpayPaymentId: payment.razorpayPaymentId,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+        pricePerCredit: pack ? (payment.amount / totalCredits).toFixed(2) : 'N/A',
+      };
+    });
+
+    res.json({
+      payments: enrichedPayments,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      hasMore: parseInt(offset) + parseInt(limit) < total,
+    });
+  } catch (err) {
+    console.error('Get purchase history error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch purchase history' });
+  }
+}
+
+/**
+ * GET /api/payments/stats
+ * Get purchase statistics
+ */
+export async function getPurchaseStats(req, res) {
   try {
     const userId = req.user.userId;
 
-    const subscription = await prisma.subscription.findUnique({ where: { userId } });
-    if (!subscription || subscription.status !== 'active') {
-      return res.status(400).json({ error: 'No active subscription to cancel' });
-    }
-
-    await prisma.subscription.update({
-      where: { userId },
-      data: { status: 'canceled' },
+    // Get all payments
+    const payments = await prisma.payment.findMany({
+      where: { userId, status: 'completed' },
     });
 
-    res.json({ success: true, message: 'Subscription canceled' });
-  } catch (error) {
-    console.error('Error canceling subscription:', error);
-    res.status(500).json({ error: 'Failed to cancel subscription' });
+    // Calculate stats
+    const totalSpent = payments.reduce((sum, p) => sum + p.amount, 0);
+    const totalPurchases = payments.length;
+    const totalCreditsSpent = payments.reduce((sum, p) => sum + (p.creditsGranted || 0), 0);
+
+    // Get credit transactions to calculate usage
+    const transactions = await prisma.creditTransaction.findMany({
+      where: { userId, type: 'usage' },
+    });
+
+    const totalCreditsUsed = Math.abs(
+      transactions.reduce((sum, t) => sum + t.amount, 0)
+    );
+
+    // Get current balance
+    const balance = await prisma.creditBalance.findUnique({
+      where: { userId },
+    });
+
+    res.json({
+      totalSpent: (totalSpent / 100).toFixed(2), // Convert from paise to rupees
+      totalPurchases,
+      totalCreditsSpent,
+      totalCreditsUsed,
+      currentBalance: balance?.credits || 0,
+      averagePerPurchase: totalPurchases > 0 ? (totalSpent / totalPurchases / 100).toFixed(2) : 0,
+    });
+  } catch (err) {
+    console.error('Get purchase stats error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch purchase stats' });
   }
 }

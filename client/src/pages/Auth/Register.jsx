@@ -1,32 +1,45 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import Button from '../../components/Button.jsx';
 import Input from '../../components/Input.jsx';
-import { useAuthStore } from '../../stores/authStore.js';
+import PasswordInput from '../../components/PasswordInput.jsx';
+import ErrorMessage from '../../components/ErrorMessage.jsx';
 import api from '../../utils/api.js';
+import { getApiError } from '../../utils/errors.js';
 
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!acceptedTerms) {
+      setError('You must accept the Terms and Conditions to register');
+      return;
+    }
+
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post('/api/auth/register', { name, email, password });
-      login(data.user, data.accessToken, data.refreshToken);
-      navigate('/dashboard');
+      await api.post('/api/auth/register', { name, email, password });
+      // Account created — redirect to the "check your inbox" screen, pass email for resend pre-fill
+      navigate('/verify-email', { state: { email } });
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      const data = err?.response?.data;
+      // Unverified duplicate — still send them to the pending screen
+      if (data?.requiresVerification) {
+        navigate('/verify-email', { state: { email } });
+        return;
+      }
+      setError(getApiError(err, 'Registration failed'));
     } finally {
       setLoading(false);
     }
@@ -46,27 +59,38 @@ export default function Register() {
           </h1>
           <p className="text-sm text-text/50 mt-1">Start crafting perfect prompts</p>
         </div>
-        {error && (
-          <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 text-center">
-            {error}
-          </motion.p>
-        )}
+        <ErrorMessage message={error} />
         <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Your name" />
         <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" />
-        <Input
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
+        <PasswordInput
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={6}
-          placeholder="At least 6 characters"
-          suffix={
-            <button type="button" onClick={() => setShowPassword((p) => !p)} className="text-text/30 hover:text-text transition-colors" tabIndex={-1}>
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          }
+          placeholder="At least 8 characters"
         />
+
+        <div className="flex items-start gap-3 p-4 bg-black/30 border border-border/50 rounded-lg">
+          <input
+            type="checkbox"
+            id="terms"
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            className="mt-1 w-4 h-4 rounded border-border bg-black/50 text-primary focus:ring-2 focus:ring-primary/50 cursor-pointer"
+            required
+          />
+          <label htmlFor="terms" className="text-sm text-text/70 leading-relaxed cursor-pointer">
+            I agree to the{' '}
+            <Link to="/legal/terms" target="_blank" className="text-primary hover:text-accent transition-colors underline">
+              Terms and Conditions
+            </Link>
+            {' '}and{' '}
+            <Link to="/legal/privacy" target="_blank" className="text-primary hover:text-accent transition-colors underline">
+              Privacy Policy
+            </Link>
+          </label>
+        </div>
+
         <Button type="submit" className="w-full" loading={loading}>
           <UserPlus size={16} />
           Get started

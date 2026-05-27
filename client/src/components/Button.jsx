@@ -5,7 +5,7 @@ import { useTier } from '../hooks/useTier.js';
 const glowMap = {
   free: 'shadow-lg shadow-primary/20',
   pro: 'shadow-lg shadow-[rgba(255,77,28,0.2)]',
-  enterprise: 'shadow-lg shadow-[rgba(168,85,247,0.2)]',
+  team: 'shadow-lg shadow-[rgba(0,200,150,0.2)]',
 };
 
 export default function Button({ children, variant = 'primary', className = '', loading, disabled, ...props }) {

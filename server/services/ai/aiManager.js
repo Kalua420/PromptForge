@@ -1,12 +1,12 @@
 import { groqProvider } from './groqProvider.js';
-import { openaiProvider } from './openaiProvider.js';
+import { sambanovaProvider } from './sambanovaProvider.js';
 import { anthropicProvider } from './anthropicProvider.js';
 import { opencodeProvider } from './opencodeProvider.js';
 import { geminiProvider } from './geminiProvider.js';
 
 const providers = {
   groq: groqProvider,
-  openai: openaiProvider,
+  sambanova: sambanovaProvider,
   anthropic: anthropicProvider,
   opencode: opencodeProvider,
   gemini: geminiProvider,
